@@ -72,7 +72,7 @@ function SelectScreen({ onPick }: { onPick: (index: number) => void }) {
           </button>
         ))}
       </div>
-      <p className="hint">Tap left &amp; right alternately to pedal</p>
+      <p className="hint">Tap left &amp; right (or press L / R) alternately to pedal</p>
     </div>
   )
 }

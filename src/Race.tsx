@@ -59,8 +59,9 @@ export function Race({
     }
     const onPointer = (e: PointerEvent) => pedal(e.clientX < window.innerWidth / 2 ? 'left' : 'right')
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowLeft') pedal('left')
-      if (e.key === 'ArrowRight') pedal('right')
+      const key = e.key.toLowerCase()
+      if (key === 'arrowleft' || key === 'l') pedal('left')
+      if (key === 'arrowright' || key === 'r') pedal('right')
     }
     window.addEventListener('pointerdown', onPointer)
     window.addEventListener('keydown', onKey)
