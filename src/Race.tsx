@@ -2,7 +2,7 @@ import { Html, Sky } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import { useEffect, useMemo, useRef, type RefObject } from 'react'
 import * as THREE from 'three'
-import { RIDERS, type Rider } from './riders'
+import { RACE_SIZE, type Rider } from './riders'
 
 export type Result = { rider: Rider; time: number }
 
@@ -18,21 +18,23 @@ type Side = 'left' | 'right'
 
 const TRACK_LENGTH = 200
 const LANE_WIDTH = 1.6
-const ROAD_WIDTH = RIDERS.length * LANE_WIDTH + 1
+const ROAD_WIDTH = RACE_SIZE * LANE_WIDTH + 1
 const TAP_IMPULSE = 0.9
 const DRAG = 0.6
 const COUNTDOWN_SECONDS = 3
 const RESULTS_DELAY_SECONDS = 1.5
 const WHEEL_RADIUS = 0.35
 
-const laneX = (index: number) => (index - (RIDERS.length - 1) / 2) * LANE_WIDTH
+const laneX = (index: number) => (index - (RACE_SIZE - 1) / 2) * LANE_WIDTH
 
 export function Race({
+  riders,
   playerIndex,
   hudRoot,
   hudStatus,
   onFinish,
 }: {
+  riders: Rider[]
   playerIndex: number
   hudRoot: RefObject<HTMLDivElement | null>
   hudStatus: RefObject<HTMLDivElement | null>
@@ -40,8 +42,8 @@ export function Race({
 }) {
   const states = useMemo<RiderState[]>(
     () =>
-      RIDERS.map(() => ({ z: 0, speed: 0, finishTime: null, nextAiTap: 0, cadence: 4.5 + Math.random() * 2 })),
-    [],
+      riders.map(() => ({ z: 0, speed: 0, finishTime: null, nextAiTap: 0, cadence: 4.5 + Math.random() * 2 })),
+    [riders],
   )
   const clock = useRef(-COUNTDOWN_SECONDS)
   const pendingTaps = useRef(0)
@@ -91,7 +93,7 @@ export function Race({
       }
       if (!racing || state.finishTime !== null) taps = 0
 
-      state.speed += taps * TAP_IMPULSE * RIDERS[index].power
+      state.speed += taps * TAP_IMPULSE * riders[index].power
       state.speed -= state.speed * DRAG * delta
       state.z += state.speed * delta
 
@@ -108,7 +110,7 @@ export function Race({
       // ponytail: riders still on the road get a time projected from their current speed
       const results = states
         .map((state, index) => ({
-          rider: RIDERS[index],
+          rider: riders[index],
           time: state.finishTime ?? clock.current + (TRACK_LENGTH - state.z) / Math.max(state.speed, 1),
         }))
         .sort((a, b) => a.time - b.time)
@@ -133,7 +135,7 @@ export function Race({
       <ambientLight intensity={0.7} />
       <directionalLight position={[10, 20, 5]} intensity={1.6} />
       <Scenery />
-      {RIDERS.map((rider, index) => (
+      {riders.map((rider, index) => (
         <Bike key={rider.name} rider={rider} lane={laneX(index)} state={states[index]} />
       ))}
     </>
@@ -235,7 +237,7 @@ function Scenery() {
         <planeGeometry args={[ROAD_WIDTH, roadLength]} />
         <meshStandardMaterial color="#555" />
       </mesh>
-      {RIDERS.slice(1).map((_, i) => (
+      {Array.from({ length: RACE_SIZE - 1 }, (_, i) => (
         <mesh key={i} rotation-x={-Math.PI / 2} position={[laneX(i) + LANE_WIDTH / 2, 0.01, -roadLength / 2 + 20]}>
           <planeGeometry args={[0.06, roadLength]} />
           <meshBasicMaterial color="#ddd" />

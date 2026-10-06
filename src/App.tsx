@@ -1,14 +1,13 @@
 import { Canvas } from '@react-three/fiber'
 import { useRef, useState, type CSSProperties } from 'react'
 import { Race, type Result } from './Race'
-import { RIDERS } from './riders'
+import { pickField, ROSTER, type Rider } from './riders'
 
 type Phase =
   | { name: 'select' }
-  | { name: 'race'; player: number; id: number }
-  | { name: 'results'; player: number; id: number; results: Result[] }
+  | { name: 'race'; player: Rider; field: Rider[]; id: number }
+  | { name: 'results'; player: Rider; field: Rider[]; id: number; results: Result[] }
 
-const MAX_POWER = Math.max(...RIDERS.map((rider) => rider.power))
 const MEDALS = ['🥇', '🥈', '🥉']
 
 export default function App() {
@@ -16,19 +15,21 @@ export default function App() {
   const hudRoot = useRef<HTMLDivElement>(null)
   const hudStatus = useRef<HTMLDivElement>(null)
 
-  const startRace = (player: number) => setPhase({ name: 'race', player, id: Date.now() })
+  const startRace = (player: Rider, field = pickField(player)) =>
+    setPhase({ name: 'race', player, field, id: Date.now() })
 
-  if (phase.name === 'select') return <SelectScreen onPick={startRace} />
+  if (phase.name === 'select') return <SelectScreen onPick={(player) => startRace(player)} />
 
   return (
     <>
       <Canvas camera={{ position: [0, 4, 8], fov: 75 }} dpr={[1, 2]}>
         <Race
           key={phase.id}
-          playerIndex={phase.player}
+          riders={phase.field}
+          playerIndex={phase.field.indexOf(phase.player)}
           hudRoot={hudRoot}
           hudStatus={hudStatus}
-          onFinish={(results) => setPhase({ name: 'results', player: phase.player, id: phase.id, results })}
+          onFinish={(results) => setPhase({ ...phase, name: 'results', results })}
         />
       </Canvas>
       {phase.name === 'race' ? (
@@ -43,7 +44,7 @@ export default function App() {
         <ResultsScreen
           results={phase.results}
           player={phase.player}
-          onRematch={() => startRace(phase.player)}
+          onRematch={() => startRace(phase.player, phase.field)}
           onChangeRider={() => setPhase({ name: 'select' })}
         />
       )}
@@ -51,24 +52,21 @@ export default function App() {
   )
 }
 
-function SelectScreen({ onPick }: { onPick: (index: number) => void }) {
+function SelectScreen({ onPick }: { onPick: (rider: Rider) => void }) {
   return (
     <div className="overlay">
       <h1>Giga Cycling Club</h1>
       <p>Pick your rider</p>
       <div className="riders">
-        {RIDERS.map((rider, index) => (
+        {ROSTER.map((rider) => (
           <button
             key={rider.name}
             className="rider-card"
             style={{ '--c': rider.color } as CSSProperties}
-            onClick={() => onPick(index)}
+            onClick={() => onPick(rider)}
           >
             <span className="swatch" />
             <strong>{rider.name}</strong>
-            <span className="power">
-              <span style={{ width: `${(rider.power / MAX_POWER) * 100}%` }} />
-            </span>
           </button>
         ))}
       </div>
@@ -84,20 +82,19 @@ function ResultsScreen({
   onChangeRider,
 }: {
   results: Result[]
-  player: number
+  player: Rider
   onRematch: () => void
   onChangeRider: () => void
 }) {
-  const me = RIDERS[player]
   const winner = results[0].rider
-  const title = winner === me ? 'You won!' : winner.giga ? "You got giga'd 💪" : `P${results.findIndex((r) => r.rider === me) + 1}`
+  const title = winner === player ? 'You won!' : winner.giga ? "You got giga'd 💪" : `P${results.findIndex((r) => r.rider === player) + 1}`
 
   return (
     <div className="overlay">
       <h1>{title}</h1>
       <ol className="podium">
         {results.map((result, index) => (
-          <li key={result.rider.name} className={result.rider === me ? 'me' : ''}>
+          <li key={result.rider.name} className={result.rider === player ? 'me' : ''}>
             <span>{MEDALS[index] ?? `${index + 1}.`}</span>
             <span>{result.rider.name}</span>
             <span>{result.time.toFixed(2)}s</span>
